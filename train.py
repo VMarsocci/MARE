@@ -6,6 +6,7 @@ import time
 import torch.nn.functional as F
 from torchvision import transforms as T
 import numpy as np
+import json
 from datetime import datetime
 
 from tqdm import tqdm, trange
@@ -61,18 +62,20 @@ cudnn.benchmark = True
 
 train_trans = T.Compose([
   T.ToPILImage(),
-  T.RandomApply([T.ColorJitter()], p=0.2),
-  T.RandomGrayscale(p = 0.2),
+  T.RandomApply([T.ColorJitter((0.4, 1.5), (0.2, 2), (0.2, 2), (-0.3, 0.3))], p=0.5),
+  T.RandomGrayscale(p = 0.3),
   T.GaussianBlur(3),
   T.ToTensor(),
-  # T.Normalize()
+  T.Normalize([0.3206467284225958, 0.3230442137290628, 0.4726621112943237], 
+  [0.1507140017014572, 0.15590631427820206, 0.21559699547025785])
 ])
 
 print(train_trans)
 
 val_trans = T.Compose([
   T.ToTensor(),
-  # T.Normalize()
+  T.Normalize([0.3156378902694481, 0.31905504344848745, 0.4772593356486166],
+  [0.14555519829539584, 0.15285215419466583, 0.21367692564739332])
 ])
 
 train_dataset_ = train_dataset(train_path, size_w, size_h, 
@@ -90,11 +93,6 @@ def weights_init(m):
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
 
-try:
-    os.makedirs(out_file)
-    os.makedirs(out_file + '/')
-except OSError:
-    pass
 if cuda:
     net.cuda()
 if num_GPU > 1:
@@ -109,6 +107,7 @@ early_stopping = EarlyStopping(patience=10, verbose=True)
 
 if __name__ == '__main__':
     start = time.time()
+    track_metrics = {}
     net.train()
     lr_adjust = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 10, eta_min=learning_rate * 0.01, last_epoch=-1)
     for epoch in range(1, niter + 1):
@@ -149,6 +148,7 @@ if __name__ == '__main__':
         metrics.append(metric)
 
         m_arr = np.mean(np.array(metrics), axis = 0)
+        track_metrics[epoch] = list(m_arr)
         print("OA:", m_arr[0], '\tACC_per_Class:', m_arr[1], "\tmIoU:", m_arr[2], "\tF1:", m_arr[3])
 
         net.train()
@@ -159,6 +159,10 @@ if __name__ == '__main__':
             break
 
     end = time.time()
+
+    with open(out_file+'/val_metrics.json', 'w') as outfile:
+      json.dump(track_metrics, outfile)
+
     print('Training completed. Program processed ', end - start, 's, ', (end - start)/60, 'min, ', (end - start)/3600, 'h')
 
     test_datatset_ = train_dataset(test_path, time_series=band, transform =val_trans)
