@@ -20,9 +20,9 @@ from sce import *
 from eval.metrics import *
 
 pretrained = 'imagenet'
-CHECKPOINTS = '/content/drive/Shareddrives/CSL/CSL_Sox/U-Net_08_03/checkpoints_CSL/imagenet_weights'
-batch_size = 2
-niter = 3
+CHECKPOINTS = '../U-Net_08_03/imagenet_weights'
+batch_size = 128
+niter = 20
 class_num = 6
 learning_rate = 0.0001 * 3
 beta1 = 0.5
@@ -32,9 +32,9 @@ size_h = 256
 size_w = 256
 flip = 0
 band = 3
-train_path = '/content/drive/MyDrive/data/Vaihingen/test/'
-val_path = '/content/drive/MyDrive/data/Vaihingen/test/'
-test_path = '/content/drive/MyDrive/data/Vaihingen/test/'
+train_path = '../Vaihingen/dataset/training/'
+val_path = '../Vaihingen/dataset/validation/'
+test_path = '../Vaihingen/test'
 
 encoder, pretrained, _ = pretrain_strategy(pretrained, CHECKPOINTS)
 net = MAResUNet(band, class_num, base_model= encoder)
@@ -42,7 +42,7 @@ net.name = datetime.today().strftime('%Y_%m_%d') + '_' + pretrained
 
 out_file = './checkpoint/' + net.name
 num_GPU = 1
-index = 10
+index = 6000
 torch.cuda.set_device(0)
 
 try:
@@ -111,7 +111,6 @@ if __name__ == '__main__':
     net.train()
     lr_adjust = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 10, eta_min=learning_rate * 0.01, last_epoch=-1)
     for epoch in range(1, niter + 1):
-        # for iter_num in trange(2000 // index, desc='train, epoch:%s' % epoch):
         for iter_num in trange(index//batch_size, desc='train, epoch:%s' % epoch):
             train_iter = train_dataset_.data_iter_index(index=index)
             for initial_image, semantic_image in train_iter:
@@ -128,8 +127,8 @@ if __name__ == '__main__':
 
         with torch.no_grad():
             net.eval()
-            val_iter = val_dataset_.data_iter_index(index=index)
-            # val_iter = val_dataset_.data_iter()
+            # val_iter = val_dataset_.data_iter_index(index=index)
+            val_iter = val_dataset_.data_iter()
             metrics = []
 
             for initial_image, semantic_image in tqdm(val_iter, desc='val'):
@@ -167,13 +166,13 @@ if __name__ == '__main__':
 
     test_datatset_ = train_dataset(test_path, time_series=band, transform =val_trans)
     start = time.time()
-    # test_iter = test_datatset_.data_iter()
-    test_iter = test_datatset_.data_iter_index(index = index)
+    test_iter = test_datatset_.data_iter()
+    # test_iter = test_datatset_.data_iter_index(index = index)
     if os.path.exists('%s/' % out_file + 'netG.pth'):
         net.load_state_dict(torch.load('%s/' % out_file + 'netG.pth'))
 
     net.eval()
-    metrics = []
+
     for initial_image, semantic_image in tqdm(test_iter, desc='test'):
         initial_image = initial_image.cuda()
         semantic_image = semantic_image.cuda()
@@ -185,11 +184,10 @@ if __name__ == '__main__':
         semantic_image = torch.squeeze(semantic_image.cpu(), 0)
         semantic_image_pred = torch.squeeze(semantic_image_pred.cpu(), 0)
 
-        metric = eval_metrics(semantic_image_pred.long(), semantic_image.long(), class_num)
+        m_arr = eval_metrics(semantic_image_pred.long(), semantic_image.long(), class_num)
         
         image = semantic_image_pred
 
-    m_arr = metric #np.mean(np.array(metric), axis = 0)
     end = time.time()
     print('Test completed. Program processed ', end - start, 's, ', (end - start)/60, 'min, ', (end - start)/3600, 'h')
     print("OA:", m_arr[0], '\tACC_per_Class:', m_arr[1], "\tmIoU:", m_arr[2], "\tF1:", m_arr[3])
