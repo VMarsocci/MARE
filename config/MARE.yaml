@@ -1,0 +1,50 @@
+# General
+general:
+  test_id: "001"
+  test_type: "obow"
+
+# Model parameters.
+model:
+  feature_extractor_arch: "resnet18"
+  checkpoints_path: "../obow_modified/results_obow/Optional/Op_1A/tochvision_resnet18_student_K8192_epoch30.pth.tar"
+  num_classes: 6
+  pretraining_arch: "obow"
+  loss: "crossentropy"
+
+# Optimization parameters.
+optim:
+  optim_type: "adamw"
+  num_epochs: 20
+  lr: 0.005
+  beta: [0.9, 0.999]
+  end_lr: 0.0005
+  weight_decay: 0.001
+  lr_schedule_type: "cosine"
+  patience: 10
+
+# Data parameters:
+data:
+  channels: 3
+  size: [256, 256]
+  train:
+    samples: 6000
+    path: '../Vaihingen/dataset/training/'
+    batch_size: 256
+    transforms:
+      cjitter: [[0.4, 1.3], 0.6, 0.6, 0.4]
+      cjitter_p: 1
+      gray_p: 0.4
+      gaussian_blur: [0.1, 3.0]
+      gaussian_blur_p: 0.5
+      normalization: [[0.3206467284225958, 0.3230442137290628, 0.4726621112943237], 
+                      [0.1507140017014572, 0.15590631427820206, 0.21559699547025785]]
+  val:
+    samples: 1500
+    path: '../Vaihingen/dataset/validation/'
+    transforms:
+      normalization: [[0.3156378902694481, 0.31905504344848745, 0.4772593356486166],
+                      [0.14555519829539584, 0.15285215419466583, 0.21367692564739332]]
+  test:
+    samples: 800
+    path: '../Vaihingen/test/'
+    

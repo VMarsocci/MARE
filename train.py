@@ -11,6 +11,7 @@ from datetime import datetime
 from PIL import ImageFilter
 import pathlib
 import yaml
+from argparse import ArgumentParser
 import os
 
 from tqdm import tqdm, trange
@@ -36,15 +37,23 @@ class GaussianBlur(object):
         str_transforms = f"GaussianBlur(sigma={self.sigma})"
         return str_transforms
 
+def get_args():
+    parser = ArgumentParser(description = "Hyperparameters", add_help = True)
+    parser.add_argument('-c', '--config-name', type = str, help = 'YAML Config name', dest = 'CONFIG', default = 'MARE')
+    return parser.parse_args()
+
+args = get_args()
+
 project_root = "."
-config_name = "MARE"
+config_name = args.CONFIG
+config_path = 'config/'+config_name
 default_dst_dir = str(pathlib.Path(project_root) / "experiments")
 
 exp_directory = pathlib.Path(default_dst_dir) / config_name
 os.makedirs(exp_directory, exist_ok=True)
 
 # Load the configuration params of the experiment
-full_config_path = pathlib.Path(project_root) / (config_name + ".yaml")
+full_config_path = pathlib.Path(project_root) / (config_path + ".yaml")
 print(f"Loading experiment {full_config_path}")
 with open(full_config_path, "r") as f:
     exp_config = yaml.load(f, Loader=yaml.SafeLoader)
