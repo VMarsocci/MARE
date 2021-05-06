@@ -37,10 +37,24 @@ class GaussianBlur(object):
         str_transforms = f"GaussianBlur(sigma={self.sigma})"
         return str_transforms
 
+class JaccardLoss():
+    def __init__(self, class_num = 6):
+      self.class_num = class_num
+
+    def __call__(self, semantic_image_pred, semantic_image):
+        semantic_image_pred = F.softmax(semantic_image_pred.squeeze(), dim=0)
+        semantic_image_pred = semantic_image_pred.argmax(dim=0)
+        semantic_image = torch.squeeze(semantic_image.cpu(), 0)
+        semantic_image_pred = torch.squeeze(semantic_image_pred.cpu(), 0)
+        _, _, jacc, _ = eval_metrics(semantic_image_pred.long(), semantic_image.long(), 
+                              self.class_num, learnable = True)
+        return nn.Parameter(jacc, requires_grad = True)
+
 def get_args():
     parser = ArgumentParser(description = "Hyperparameters", add_help = True)
     parser.add_argument('-c', '--config-name', type = str, help = 'YAML Config name', dest = 'CONFIG', default = 'MARE')
     return parser.parse_args()
+
 
 args = get_args()
 
@@ -158,6 +172,8 @@ if exp_config['model']['loss'] == 'crossentropy':
     criterion = nn.CrossEntropyLoss(ignore_index=255)
 elif exp_config['model']['loss'] == 'softcrossentropy':
     criterion = SoftCrossEntropyLoss(smooth_factor= 0.1, n_classes = class_num, ignore_index=255)
+elif exp_config['model']['loss'] == 'jaccard':
+    criterion = JaccardLoss(class_num = 6)
 else:
     print('Loss not implemented yet. Cross Entropy selected by default')
     criterion = nn.CrossEntropyLoss(ignore_index=255)
