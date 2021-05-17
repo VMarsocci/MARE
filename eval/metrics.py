@@ -90,7 +90,7 @@ def dice_coefficient(hist):
     return avg_dice
 
 
-def eval_metrics(true, pred, num_classes):
+def eval_metrics(true, pred, num_classes, learnable = False):
     """Computes various segmentation metrics on 2D feature maps.
     Args:
         true: a tensor of shape [B, H, W] or [B, 1, H, W].
@@ -110,7 +110,10 @@ def eval_metrics(true, pred, num_classes):
     avg_per_class_acc = per_class_pixel_accuracy(hist)
     avg_jacc = jaccard_index(hist)
     avg_dice = dice_coefficient(hist)
-    return overall_acc.item(), avg_per_class_acc.item(), avg_jacc.item(), avg_dice.item()
+    if learnable:
+        return 1 - overall_acc, 1 - avg_per_class_acc, 1 - avg_jacc, 1 - avg_dice
+    else:
+        return overall_acc.item(), avg_per_class_acc.item(), avg_jacc.item(), avg_dice.item()
 
 
 class AverageMeter(object):

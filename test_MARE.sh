@@ -1,10 +1,10 @@
 #!/bin/bash --gpu=0
-pip install -r requirements.txt
+# pip install -r requirements.txt
 
-for MC in {"MC1","MC1","MC1"}
+for MC in {"MC25","prova_test"}
     do       			
 	echo "Config: $MC"
-	python main_obow.py --config="$MC"
+	python train.py --config="$MC"
 	echo "CAMBIO PARAMETRI"
 
     done

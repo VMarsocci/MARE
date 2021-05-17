@@ -8,11 +8,11 @@ from torchvision import transforms as T
 import numpy as np
 import json
 from datetime import datetime
-from PIL import ImageFilter
 import pathlib
 import yaml
 from argparse import ArgumentParser
 import os
+from functools import partial
 
 from tqdm import tqdm, trange
 
@@ -22,33 +22,10 @@ from MAResUNet import MAResUNet
 from early_stopping import EarlyStopping
 from cp import *
 from sce import *
+from optim import *
+from utils import *
+# from ce import CrossEntropyLoss
 from eval.metrics import *
-
-class GaussianBlur(object):
-    def __init__(self, sigma=[.1, 2.]):
-        self.sigma = sigma
-
-    def __call__(self, x):
-        sigma = np.random.uniform(self.sigma[0], self.sigma[1])
-        x = x.filter(ImageFilter.GaussianBlur(radius=sigma))
-        return x
-
-    def __str__(self):
-        str_transforms = f"GaussianBlur(sigma={self.sigma})"
-        return str_transforms
-
-class JaccardLoss():
-    def __init__(self, class_num = 6):
-      self.class_num = class_num
-
-    def __call__(self, semantic_image_pred, semantic_image):
-        semantic_image_pred = F.softmax(semantic_image_pred.squeeze(), dim=0)
-        semantic_image_pred = semantic_image_pred.argmax(dim=0)
-        semantic_image = torch.squeeze(semantic_image.cpu(), 0)
-        semantic_image_pred = torch.squeeze(semantic_image_pred.cpu(), 0)
-        _, _, jacc, _ = eval_metrics(semantic_image_pred.long(), semantic_image.long(), 
-                              self.class_num, learnable = True)
-        return nn.Parameter(jacc, requires_grad = True)
 
 def get_args():
     parser = ArgumentParser(description = "Hyperparameters", add_help = True)
@@ -78,14 +55,21 @@ print(f"Logs and/or checkpoints will be stored on {exp_directory}")
 pretrained = exp_config['model']['pretraining_arch']
 CHECKPOINTS = exp_config['model']['checkpoints_path']
 
+if exp_config['general']['plot']:
+  print('Plotting enabled')
+  graph_directory = pathlib.Path(exp_directory) / 'graphs'
+  os.makedirs(graph_directory, exist_ok=True)
+  print("The gradient plots will be stored in ", graph_directory)
+
+if exp_config['general']['last_layer_debug']:
+  print('Gradient debugging enabled')
+  deb_directory = pathlib.Path(exp_directory) / 'last_layer'
+  os.makedirs(deb_directory, exist_ok=True)
+  print("The gradient plots will be stored in ", deb_directory)
+
 batch_size = exp_config['data']['train']['batch_size']
 niter = exp_config['optim']['num_epochs']
 class_num = exp_config['model']['num_classes']
-
-learning_rate = exp_config['optim']['lr']
-end_learning_rate = exp_config['optim']['end_lr']
-betas = exp_config['optim']['beta']
-weight_decay = exp_config['optim']['weight_decay']
 
 cuda = True
 num_workers = 4
@@ -152,46 +136,45 @@ train_dataset_ = train_dataset(train_path, size_w, size_h,
 val_dataset_ = train_dataset(val_path, size_w, size_h, 0, 
                              band, transform =val_trans)
 
-def weights_init(m):
-    class_name = m.__class__.__name__
-    if class_name.find('Conv') != -1:
-        m.weight.data.normal_(0.0, 0.02)
-        m.bias.data.fill_(0)
-    elif class_name.find('BatchNorm') != -1:
-        m.weight.data.normal_(1.0, 0.02)
-        m.bias.data.fill_(0)
-
 if cuda:
     net.cuda()
 if num_GPU > 1:
     net = nn.DataParallel(net)
 
+########## NONLINEARITY ############
+if exp_config['model']['nonlinearity'] == 'relu':
+    nonlinearity = partial(F.relu, inplace=True)
+if exp_config['model']['nonlinearity'] == 'leakyrelu':
+    nonlinearity = partial(F.leaky_relu, inplace=True)
 
-###########   LOSS & OPTIMIZER   ##########
+print('Non-linearity selected: ', exp_config['model']['nonlinearity'])
+
+
+###########   LOSS    ##########
 if exp_config['model']['loss'] == 'crossentropy':
     criterion = nn.CrossEntropyLoss(ignore_index=255)
+    # criterion = CrossEntropyLoss(ignore_index=255)
+elif exp_config['model']['loss'] == 'weightedcrossentropy':
+    weights = exp_config['model']['loss_weights']
+    class_weights = torch.FloatTensor(weights).cuda()
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
 elif exp_config['model']['loss'] == 'softcrossentropy':
     criterion = SoftCrossEntropyLoss(smooth_factor= 0.1, n_classes = class_num, ignore_index=255)
 elif exp_config['model']['loss'] == 'jaccard':
-    criterion = JaccardLoss(class_num = 6)
+    criterion = CustomLoss(class_num = 6, loss_name = 'jaccard')
+elif exp_config['model']['loss'] == 'dice':
+    criterion = CustomLoss(class_num = 6, loss_name = 'dice')
 else:
     print('Loss not implemented yet. Cross Entropy selected by default')
     criterion = nn.CrossEntropyLoss(ignore_index=255)
 
-if exp_config['optim']['optim_type'] == 'adamw':
-    optimizer = torch.optim.AdamW(net.parameters(), 
-                                  lr=learning_rate, 
-                                  betas = betas,
-                                  weight_decay=weight_decay)
-elif exp_config['optim']['optim_type'] == 'adam':
-    optimizer = torch.optim.Adam(net.parameters(), 
-                                  lr=learning_rate, 
-                                  betas = betas,
-                                  weight_decay=weight_decay)
-else:
-    print('Optim not implemented yet. Adam selected by default')
+print('Loss selected: ', exp_config['model']['loss'])
 
-
+###########   OPTIMIZER AND SCHEDULER    ##########
+optimizer = set_optimizer(exp_config['optim'], net)
+print('Optimizer selected: ', exp_config['optim']['optim_type'])
+lr_adjust = set_scheduler(exp_config['optim'], optimizer)
+print('Scheduler selected: ', exp_config['optim']['lr_schedule_type'])
 early_stopping = EarlyStopping(patience=exp_config['optim']['patience'], 
                                verbose=True)
 
@@ -205,19 +188,33 @@ if __name__ == '__main__':
     track_miou = []
     track_f1 = []
     net.train()
-    lr_adjust = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 10, eta_min=learning_rate * 0.01, last_epoch=-1)
     for epoch in range(1, niter + 1):
         sum_loss = 0
         train_iter = train_dataset_.data_iter_index(index=index)
         for param_group in optimizer.param_groups:
             track_lr.append(param_group['lr'])
             print("Epoch: %s" % epoch, " - Learning rate: ", param_group['lr'])
-
+        
+        i = 0
         for initial_image, semantic_image in tqdm(train_iter, desc='train'):
             initial_image = initial_image.cuda()
             semantic_image = semantic_image.cuda()
 
             semantic_image_pred = net(initial_image)
+
+            if exp_config['general']['last_layer_debug']:
+              if np.random.random_sample() > (1-exp_config['general']['p_debug']):
+                # print('Saving graph')
+                pred_batch = semantic_image_pred.detach().cpu().numpy()
+                np.savez(str(deb_directory)+'/{}e_{}bs_sample.npz'.format(str(epoch), str(i)), 
+                        mask=pred_batch[-1], 
+                        final_conv=net.finalconv3.weight.detach().cpu().numpy())
+                plt.figure(figsize=(15,10))
+                plt.hist(pred_batch.flatten(), bins = 100)
+                plt.title('{} epoch - {} batch size: mask distribution'.format(str(epoch), str(i)))
+                plt.grid()
+                plt.savefig(str(deb_directory)+'/{}e_{}bs_hist.png'.format(str(epoch), str(i)))
+                plt.close()
 
             loss = criterion(semantic_image_pred, semantic_image.long())
             optimizer.zero_grad()
@@ -225,10 +222,18 @@ if __name__ == '__main__':
             optimizer.step()
             
             sum_loss += loss.detach().cpu().numpy()*initial_image.shape[0]
+            i += 1
         
         epoch_loss = sum_loss/index
         track_loss.append(epoch_loss)
+        if exp_config['general']['plot']:
+             plot_grad_flow(net.named_parameters(), epoch, graph_directory)
         print("Training loss: ", epoch_loss)
+        if exp_config['model']['gradient_clipping']:
+          clips = exp_config['model']['gradient_clipping_values']
+          for p in net.parameters():
+               p.register_hook(lambda grad: torch.clamp(grad, clips[0], clips[1]))
+          print('Gradient clipped between: ', clips)
 
         lr_adjust.step()
         
@@ -254,7 +259,6 @@ if __name__ == '__main__':
         metrics.append(metric)
 
         m_arr = np.mean(np.array(metrics), axis = 0)
-        # track_metrics[epoch] = list(m_arr)
         track_OA.append(m_arr[0])
         track_acc.append(m_arr[1])
         track_miou.append(m_arr[2])

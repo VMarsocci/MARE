@@ -7,9 +7,6 @@ from torch.nn import Module, Conv2d, Parameter, Softmax
 from functools import partial
 
 
-nonlinearity = partial(F.relu, inplace=True)
-
-
 def conv3otherRelu(in_planes, out_planes, kernel_size=None, stride=None, padding=None):
     # 3x3 convolution with padding and relu
     if kernel_size is None:
@@ -113,7 +110,7 @@ class PAM_CAM_Layer(nn.Module):
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_channels, n_filters):
+    def __init__(self, in_channels, n_filters, nonlinearity):
         super(DecoderBlock, self).__init__()
 
         self.conv1 = nn.Conv2d(in_channels, in_channels // 4, 1)
@@ -143,6 +140,7 @@ class DecoderBlock(nn.Module):
 
 class MAResUNet(nn.Module):
     def __init__(self, num_channels=3, num_classes=6, 
+        nonlinearity =  partial(F.relu, inplace=True),
         base_model = models.resnet18(pretrained = True)):
 
         super(MAResUNet, self).__init__()
@@ -165,10 +163,10 @@ class MAResUNet(nn.Module):
         self.attention2 = PAM_CAM_Layer(filters[1])
         self.attention1 = PAM_CAM_Layer(filters[0])
 
-        self.decoder4 = DecoderBlock(filters[3], filters[2])
-        self.decoder3 = DecoderBlock(filters[2], filters[1])
-        self.decoder2 = DecoderBlock(filters[1], filters[0])
-        self.decoder1 = DecoderBlock(filters[0], filters[0])
+        self.decoder4 = DecoderBlock(filters[3], filters[2], nonlinearity)
+        self.decoder3 = DecoderBlock(filters[2], filters[1], nonlinearity)
+        self.decoder2 = DecoderBlock(filters[1], filters[0], nonlinearity)
+        self.decoder1 = DecoderBlock(filters[0], filters[0], nonlinearity)
 
         self.finaldeconv1 = nn.ConvTranspose2d(filters[0], 32, 4, 2, 1)
         self.finalrelu1 = nonlinearity
@@ -207,10 +205,10 @@ class MAResUNet(nn.Module):
         return out
 
 
-if __name__ == '__main__':
-    num_classes = 10
-    in_batch, inchannel, in_h, in_w = 10, 3, 256, 256
-    x = torch.randn(in_batch, inchannel, in_h, in_w)
-    net = MAResUNet(3)
-    out = net(x)
-    print(out.shape)
+# if __name__ == '__main__':
+#     num_classes = 10
+#     in_batch, inchannel, in_h, in_w = 10, 3, 256, 256
+#     x = torch.randn(in_batch, inchannel, in_h, in_w)
+#     net = MAResUNet(3)
+#     out = net(x)
+#     print(out.shape)
