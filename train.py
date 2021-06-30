@@ -21,10 +21,8 @@ from MACUNet import MACUNet
 from MAResUNet import MAResUNet
 from early_stopping import EarlyStopping
 from cp import *
-from sce import *
 from optim import *
 from utils import *
-# from ce import CrossEntropyLoss
 from eval.metrics import *
 
 def get_args():
@@ -71,6 +69,7 @@ batch_size = exp_config['data']['train']['batch_size']
 niter = exp_config['optim']['num_epochs']
 class_num = exp_config['model']['num_classes']
 
+####TO DO: mettere gli argparse per questi due
 cuda = True
 num_workers = 4
 num_GPU = 1
@@ -107,7 +106,7 @@ try:
 except OSError:
     pass
 
-manual_seed = np.random.randint(1, 10000)
+manual_seed = 18
 np.random.seed(manual_seed)
 torch.manual_seed(manual_seed)
 cudnn.benchmark = True
@@ -130,11 +129,17 @@ val_trans = T.Compose([
   T.Normalize(*exp_config['data']['val']['transforms']['normalization'])
 ])
 
-train_dataset_ = train_dataset(train_path, size_w, size_h, 
-                               flip, band, batch_size, transform = train_trans)
+train_dataset_ = train_dataset(train_path, 
+                             size_w, size_h, 
+                             flip = 0, 
+                             batch_size = batch_size,
+                             transform = val_trans)
 
-val_dataset_ = train_dataset(val_path, size_w, size_h, 0, 
-                             band, transform =val_trans)
+val_dataset_ = train_dataset(val_path, 
+                             size_w, size_h, 
+                             flip = 0, 
+                             batch_size = 1,        #tenere 1
+                             transform = val_trans)
 
 if cuda:
     net.cuda()
@@ -158,12 +163,12 @@ elif exp_config['model']['loss'] == 'weightedcrossentropy':
     weights = exp_config['model']['loss_weights']
     class_weights = torch.FloatTensor(weights).cuda()
     criterion = nn.CrossEntropyLoss(weight=class_weights)
-elif exp_config['model']['loss'] == 'softcrossentropy':
-    criterion = SoftCrossEntropyLoss(smooth_factor= 0.1, n_classes = class_num, ignore_index=255)
-elif exp_config['model']['loss'] == 'jaccard':
-    criterion = CustomLoss(class_num = 6, loss_name = 'jaccard')
-elif exp_config['model']['loss'] == 'dice':
-    criterion = CustomLoss(class_num = 6, loss_name = 'dice')
+# elif exp_config['model']['loss'] == 'softcrossentropy':
+#     criterion = SoftCrossEntropyLoss(smooth_factor= 0.1, n_classes = class_num, ignore_index=255)
+# elif exp_config['model']['loss'] == 'jaccard':
+#     criterion = CustomLoss(class_num = 6, loss_name = 'jaccard')
+# elif exp_config['model']['loss'] == 'dice':
+#     criterion = CustomLoss(class_num = 6, loss_name = 'dice')
 else:
     print('Loss not implemented yet. Cross Entropy selected by default')
     criterion = nn.CrossEntropyLoss(ignore_index=255)
@@ -241,7 +246,8 @@ if __name__ == '__main__':
         with torch.no_grad():
             net.eval()
             val_iter = val_dataset_.data_iter_index(index=val_index)
-            metrics = []
+
+            hist = torch.zeros((n_classes, n_classes)).to(device=device, dtype=torch.long)
 
             for initial_image, semantic_image in tqdm(val_iter, desc='val'):
                 initial_image = initial_image.cuda()
@@ -254,11 +260,12 @@ if __name__ == '__main__':
                 semantic_image = torch.squeeze(semantic_image.cpu(), 0)
                 semantic_image_pred = torch.squeeze(semantic_image_pred.cpu(), 0)
 
-                metric = eval_metrics(semantic_image_pred.long(), semantic_image.long(), class_num)
+                hist += fast_hist(semantic_image.flatten().type(torch.LongTensor), 
+                                  semantic_image_pred.flatten().type(torch.LongTensor), 
+                                  n_classes)
 
-        metrics.append(metric)
 
-        m_arr = np.mean(np.array(metrics), axis = 0)
+        m_arr = eval_metrics(hist)
         track_OA.append(m_arr[0])
         track_acc.append(m_arr[1])
         track_miou.append(m_arr[2])
@@ -278,7 +285,11 @@ if __name__ == '__main__':
 
     print('Training completed. Program processed ', end - start, 's, ', (end - start)/60, 'min, ', (end - start)/3600, 'h')
 
-    test_datatset_ = train_dataset(test_path, time_series=band, transform = val_trans)
+    test_datatset_ = train_dataset(test_path, 
+                             size_w, size_h, 
+                             flip = 0, 
+                             batch_size = 1,        #tenere 1
+                             transform = val_trans)
     start = time.time()
     test_iter = test_datatset_.data_iter_index(index = test_index)
     if os.path.exists('%s/' % out_file + 'netG.pth'):
@@ -286,6 +297,8 @@ if __name__ == '__main__':
         print("Checkpoints correctly loaded: ", out_file)
 
     net.eval()
+
+    hist = torch.zeros((n_classes, n_classes)).to(device=device, dtype=torch.long)
 
     for initial_image, semantic_image in tqdm(test_iter, desc='test'):
         initial_image = initial_image.cuda()
@@ -298,9 +311,12 @@ if __name__ == '__main__':
         semantic_image = torch.squeeze(semantic_image.cpu(), 0)
         semantic_image_pred = torch.squeeze(semantic_image_pred.cpu(), 0)
 
-        m_arr = eval_metrics(semantic_image_pred.long(), semantic_image.long(), class_num)
-        
-        image = semantic_image_pred
+        hist += fast_hist(semantic_image.flatten().type(torch.LongTensor), 
+                          semantic_image_pred.flatten().type(torch.LongTensor), 
+                          n_classes)
+
+
+    m_arr = eval_metrics(hist)
 
     end = time.time()
     print('Test completed. Program processed ', end - start, 's, ', (end - start)/60, 'min, ', (end - start)/3600, 'h')

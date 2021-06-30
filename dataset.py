@@ -11,7 +11,7 @@ def is_image_file(filename):
 
 class train_dataset(data.Dataset):
     def __init__(self, data_path='', size_w=256, size_h=256, flip=0, 
-                time_series=4, batch_size=1, transform = None):
+                batch_size=1, transform = None):
         super(train_dataset, self).__init__()
         self.src_list = np.array(sorted(glob.glob(data_path + 'imgs/' + '*.npy')))
         self.lab_list = np.array(sorted(glob.glob(data_path + 'masks/' + '*.npy')))
@@ -19,7 +19,6 @@ class train_dataset(data.Dataset):
         self.size_w = size_w
         self.size_h = size_h
         self.flip = flip
-        self.time_series = time_series
         self.index = 0
         self.batch_size = batch_size
         self.transform = transform
