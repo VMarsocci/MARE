@@ -154,21 +154,17 @@ if exp_config['model']['nonlinearity'] == 'leakyrelu':
 
 print('Non-linearity selected: ', exp_config['model']['nonlinearity'])
 
+class_ignored = 0 #background
 
 ###########   LOSS    ##########
 if exp_config['model']['loss'] == 'crossentropy':
-    criterion = nn.CrossEntropyLoss(ignore_index=255)
+    criterion = nn.CrossEntropyLoss(ignore_index=class_ignored)
+    print('Class ignored:', class_ignored)
     # criterion = CrossEntropyLoss(ignore_index=255)
 elif exp_config['model']['loss'] == 'weightedcrossentropy':
     weights = exp_config['model']['loss_weights']
     class_weights = torch.FloatTensor(weights).cuda()
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
-# elif exp_config['model']['loss'] == 'softcrossentropy':
-#     criterion = SoftCrossEntropyLoss(smooth_factor= 0.1, n_classes = class_num, ignore_index=255)
-# elif exp_config['model']['loss'] == 'jaccard':
-#     criterion = CustomLoss(class_num = 6, loss_name = 'jaccard')
-# elif exp_config['model']['loss'] == 'dice':
-#     criterion = CustomLoss(class_num = 6, loss_name = 'dice')
+    criterion = nn.CrossEntropyLoss(weight=class_weights, ignore_index=class_ignored)
 else:
     print('Loss not implemented yet. Cross Entropy selected by default')
     criterion = nn.CrossEntropyLoss(ignore_index=255)
@@ -246,8 +242,8 @@ if __name__ == '__main__':
         with torch.no_grad():
             net.eval()
             val_iter = val_dataset_.data_iter_index(index=val_index)
-
-            hist = torch.zeros((n_classes, n_classes)).to(device=device, dtype=torch.long)
+            
+            hist = torch.zeros((class_num, class_num)).to(device=device, dtype=torch.long)
 
             for initial_image, semantic_image in tqdm(val_iter, desc='val'):
                 initial_image = initial_image.cuda()
@@ -262,19 +258,27 @@ if __name__ == '__main__':
 
                 hist += fast_hist(semantic_image.flatten().type(torch.LongTensor), 
                                   semantic_image_pred.flatten().type(torch.LongTensor), 
-                                  n_classes)
+                                 class_num)
 
 
-        m_arr = eval_metrics(hist)
-        track_OA.append(m_arr[0])
-        track_acc.append(m_arr[1])
-        track_miou.append(m_arr[2])
-        track_f1.append(m_arr[3])
+        # m_arr = eval_metrics(hist)
+        verb_m = eval_metrics(hist, verbose = True)
+        OA = verb_m[0]
+        m_acc = np.float64(np.mean(verb_m[1][1:]))
+        miou = np.float64(np.mean(verb_m[2][1:]))
+        m_f1= np.float64(np.mean(verb_m[3][1:]))
+        track_OA.append(OA)
+        track_acc.append(m_acc)
+        track_miou.append(miou)
+        track_f1.append(m_f1)
         print("Val metrics:")
-        print("OA:", m_arr[0], '\tACC_per_Class:', m_arr[1], "\tmIoU:", m_arr[2], "\tF1:", m_arr[3])
+        # print("OA:", m_arr[0], '\tACC_per_Class:', m_arr[1], "\tmIoU:", m_arr[2], "\tF1:", m_arr[3])
+        print('ACC_per_Class: ', verb_m[1])
+        # print('mIoU: ', np.mean(verb_m[2][1:]))
+        print("OA:", OA, '\tACC_per_Class:', m_acc, "\tmIoU:", miou, "\tF1:", m_f1)
         net.train()
 
-        early_stopping(1 - m_arr[2], net, '%s/' % out_file + 'netG.pth')
+        early_stopping(1 - miou, net, '%s/' % out_file + 'netG.pth')
 
         if early_stopping.early_stop:
             break
@@ -298,7 +302,7 @@ if __name__ == '__main__':
 
     net.eval()
 
-    hist = torch.zeros((n_classes, n_classes)).to(device=device, dtype=torch.long)
+    hist = torch.zeros((class_num, class_num)).to(device=device, dtype=torch.long)
 
     for initial_image, semantic_image in tqdm(test_iter, desc='test'):
         initial_image = initial_image.cuda()
@@ -313,22 +317,22 @@ if __name__ == '__main__':
 
         hist += fast_hist(semantic_image.flatten().type(torch.LongTensor), 
                           semantic_image_pred.flatten().type(torch.LongTensor), 
-                          n_classes)
+                          class_num)
 
 
-    m_arr = eval_metrics(hist)
+    m_arr = eval_metrics(hist, verbose = True)
 
     end = time.time()
     print('Test completed. Program processed ', end - start, 's, ', (end - start)/60, 'min, ', (end - start)/3600, 'h')
-    print("OA:", m_arr[0], '\tACC_per_Class:', m_arr[1], "\tmIoU:", m_arr[2], "\tF1:", m_arr[3])
+    print("OA:", m_arr[0], '\nACC_per_Class:', m_arr[1], "\nmIoU:", m_arr[2], "\nF1:", m_arr[3])
     
     track_metrics['train_loss'] = track_loss
     track_metrics['train_val_OA'] = track_OA
     track_metrics['train_val_acc_per_class'] = track_acc
     track_metrics['train_val_miou'] = track_miou
     track_metrics['train_val_f1'] = track_f1
-    track_metrics['lr'] = track_lr
-    track_metrics['test'] = m_arr
+    # track_metrics['lr'] = track_lr
+    # track_metrics['test'] = m_arr
 
     with open(out_file+'/track_metrics.json', 'w') as outfile:
       json.dump(track_metrics, outfile)

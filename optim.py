@@ -26,8 +26,10 @@ def set_optimizer(optim_params, model):
 def set_scheduler(optim_params, optimizer):
     if optim_params['lr_schedule_type'] == 'step_lr':
         scheduler = optim.lr_scheduler.StepLR(optimizer, 
-                                              optim_params['step'], 
-                                              optim_params['gamma'])
+                                              step_size = optim_params['step'], 
+                                              gamma = optim_params['gamma'],
+                                              )
+        # scheduler.last_epoch = optim_params['last_epoch']
     elif optim_params['lr_schedule_type'] == 'exp':
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, 
                                               optim_params['gamma'])
