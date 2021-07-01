@@ -10,11 +10,17 @@ Scene understanding of satellite and aerial images is a pivotal task in various 
 3. [Usage](#usage)
 4. [Pretrained Model](#output)
 5. [License](#license)
-6. [Citation](#citation)
+<!-- 6. [Citation](#citation) -->
 
 ## Features
 
 MARE shows new encouraging results on the ISPRS Vaihingen benchmark dataset.
+
+[OBOW](https://github.com/valeoai/obow/tree/main/obow)
+
+<!-- <div align="center"><img src="images/example.png", width="700"></div> -->
+
+[MAResU-Net](https://github.com/lironui/MAResU-Net)
 
 <!-- <div align="center"><img src="images/example.png", width="700"></div> -->
 
@@ -31,17 +37,21 @@ pip install -r requirements.txt
 After cloning the repo, 
 modifica lo YAML (guarda esempio) e lancia il train.py
 
+```bash
+python train.py --config="Op1"
+```
+
 
 ## Pretrained Model
 
-At this [link](link), the pretrained MAResU-Net model is available.
+At this [link](https://drive.google.com/file/d/18Ty0aUDflPjvONNszzo14JI0GjP1Rbed/view?usp=sharing), the pretrained model is available.
 
 ## License
 
 This is an open access article distributed under the [Creative Commons Attribution License](https://creativecommons.org/licenses/by/4.0/) which permits unrestricted use, distribution, and reproduction in any medium, provided the original work is properly cited.
 
-## Citation
+<!-- ## Citation
 
 ```bash
 to do
-```
+``` -->
