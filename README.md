@@ -15,12 +15,12 @@ Scene understanding of satellite and aerial images is a pivotal task in various 
 ## Features
 
 To deal with the challenge of limited annotated training data for RS segmentation, we rely on self-supervised learning to learn powerful representations, that can tap on the potential of the large amount of unlabeled data, readily available in RS. 
-Particularly, we decided to use Online Bag of Words ([OBOW](https://github.com/valeoai/obow/tree/main/obow)) , because it relies on the use of visual words, which are visual concepts localized in the spatial domain (as opposed to global concepts as in most other SSL methods). This could be beneficial for dense predictions tasks such as semantic segmentation. Furthermore, it exhibits very strong empirical performance.
+Particularly, we decided to use Online Bag of Words ([OBOW](https://arxiv.org/abs/2012.11552) , because it relies on the use of visual words, which are visual concepts localized in the spatial domain (as opposed to global concepts as in most other SSL methods). This could be beneficial for dense predictions tasks such as semantic segmentation. Furthermore, it exhibits very strong empirical performance.
 In the picture, some visual words are presented.
 
 <div align="center"><img src="images/visual_words.jpg", width="500"></div>
 
-On the other hand, we decided to rely on Multi-stage Attention ResU-Net ([MAResU-Net](https://github.com/lironui/MAResU-Net)), for the semantic segmentation task, because of several reasons. U-Net-based architectures have proven to be an excellent choice for image segmentation tasks that provides solid performance. The use of self-attention mechanism has shown to provide high-capacity models that can properly take advantage of large scale datasets. Finally, to deal with the high computational cost of self-attention, we extend the solution proposed by MAResU-Net
+On the other hand, we decided to rely on Multi-stage Attention ResU-Net ([MAResU-Net](https://arxiv.org/abs/2011.14302)), for the semantic segmentation task, because of several reasons. U-Net-based architectures have proven to be an excellent choice for image segmentation tasks that provides solid performance. The use of self-attention mechanism has shown to provide high-capacity models that can properly take advantage of large scale datasets. Finally, to deal with the high computational cost of self-attention, we extend the solution proposed by MAResU-Net
 
 MARE performs new encouraging results on the ISPRS Vaihingen benchmark dataset, as the examples show.
 
@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 ## Usage 
 
-To train the OBOW, follow the instructions in [OBOW](https://github.com/valeoai/obow/tree/main/obow).
+To train the OBOW, follow the instructions in [OBOW repo](https://github.com/valeoai/obow/tree/main/obow).
 
 Then, to train the segmentation model, insert the information in the .yaml in the Config directory.
 
