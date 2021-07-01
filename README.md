@@ -18,7 +18,7 @@ MARE shows new encouraging results on the ISPRS Vaihingen benchmark dataset.
 
 [OBOW](https://github.com/valeoai/obow/tree/main/obow)
 
-<div align="center"><img src="images/visual_words.png", width="500"></div>
+<div align="center"><img src="images/visual_words.jpg", width="500"></div>
 
 [MAResU-Net](https://github.com/lironui/MAResU-Net)
 
