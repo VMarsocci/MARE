@@ -15,7 +15,7 @@ Scene understanding of satellite and aerial images is a pivotal task in various 
 ## Features
 
 To deal with the challenge of limited annotated training data for RS segmentation, we rely on self-supervised learning to learn powerful representations, that can tap on the potential of the large amount of unlabeled data, readily available in RS. 
-Particularly, we decided to use Online Bag of Words ([OBOW](https://arxiv.org/abs/2012.11552) , because it relies on the use of visual words, which are visual concepts localized in the spatial domain (as opposed to global concepts as in most other SSL methods). This could be beneficial for dense predictions tasks such as semantic segmentation. Furthermore, it exhibits very strong empirical performance.
+Particularly, we decided to use Online Bag of Words ([OBOW](https://arxiv.org/abs/2012.11552)), because it relies on the use of visual words, which are visual concepts localized in the spatial domain (as opposed to global concepts as in most other SSL methods). This could be beneficial for dense predictions tasks such as semantic segmentation. Furthermore, it exhibits very strong empirical performance.
 In the picture, some visual words are presented.
 
 <div align="center"><img src="images/visual_words.jpg", width="500"></div>
