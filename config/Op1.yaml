@@ -1,0 +1,49 @@
+# General
+general:
+  test_id:
+  test_type:
+
+# Model parameters.
+model:
+  feature_extractor_arch:
+  checkpoints_path: 
+  num_classes: 
+  pretraining_arch: 
+  loss: 
+
+# Optimization parameters.
+optim:
+  optim_type: 
+  num_epochs: 
+  lr:
+  beta: 
+  end_lr:
+  weight_decay: 
+  lr_schedule_type: 
+  patience:
+
+# Data parameters:
+data:
+  channels: 
+  size: 
+  train:
+    samples: 
+    path: 
+    batch_size: 
+    transforms:
+      cjitter: 
+      cjitter_p:
+      gray_p: 
+      gaussian_blur: 
+      gaussian_blur_p: 
+      normalization: 
+  val:
+    samples: 
+    path: 
+    transforms:
+      normalization: 
+
+  test:
+    samples: 
+    path: 
+    
