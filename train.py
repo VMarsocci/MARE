@@ -17,7 +17,6 @@ from functools import partial
 from tqdm import tqdm, trange
 
 from dataset import train_dataset
-from MACUNet import MACUNet
 from MAResUNet import MAResUNet
 from early_stopping import EarlyStopping
 from cp import *
