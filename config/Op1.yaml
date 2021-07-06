@@ -5,22 +5,28 @@ general:
 
 # Model parameters.
 model:
-  feature_extractor_arch:
+  feature_extractor_arch: 
   checkpoints_path: 
   num_classes: 
   pretraining_arch: 
   loss: 
+  loss_weights: 
+  nonlinearity: 
+  gradient_clipping:
 
 # Optimization parameters.
 optim:
   optim_type: 
   num_epochs: 
-  lr:
+  lr: 
   beta: 
-  end_lr:
+  end_lr: 
   weight_decay: 
   lr_schedule_type: 
-  patience:
+  step: 
+  gamma: 
+  last_epoch: 
+  patience: 
 
 # Data parameters:
 data:

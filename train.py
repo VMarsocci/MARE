@@ -53,17 +53,17 @@ print(f"Logs and/or checkpoints will be stored on {exp_directory}")
 pretrained = exp_config['model']['pretraining_arch']
 CHECKPOINTS = exp_config['model']['checkpoints_path']
 
-if exp_config['general']['plot']:
-  print('Plotting enabled')
-  graph_directory = pathlib.Path(exp_directory) / 'graphs'
-  os.makedirs(graph_directory, exist_ok=True)
-  print("The gradient plots will be stored in ", graph_directory)
+# if exp_config['general']['plot']:
+#   print('Plotting enabled')
+#   graph_directory = pathlib.Path(exp_directory) / 'graphs'
+#   os.makedirs(graph_directory, exist_ok=True)
+#   print("The gradient plots will be stored in ", graph_directory)
 
-if exp_config['general']['last_layer_debug']:
-  print('Gradient debugging enabled')
-  deb_directory = pathlib.Path(exp_directory) / 'last_layer'
-  os.makedirs(deb_directory, exist_ok=True)
-  print("The gradient plots will be stored in ", deb_directory)
+# if exp_config['general']['last_layer_debug']:
+#   print('Gradient debugging enabled')
+#   deb_directory = pathlib.Path(exp_directory) / 'last_layer'
+#   os.makedirs(deb_directory, exist_ok=True)
+#   print("The gradient plots will be stored in ", deb_directory)
 
 batch_size = exp_config['data']['train']['batch_size']
 niter = exp_config['optim']['num_epochs']
@@ -203,19 +203,19 @@ if __name__ == '__main__':
 
             semantic_image_pred = net(initial_image)
 
-            if exp_config['general']['last_layer_debug']:
-              if np.random.random_sample() > (1-exp_config['general']['p_debug']):
-                # print('Saving graph')
-                pred_batch = semantic_image_pred.detach().cpu().numpy()
-                np.savez(str(deb_directory)+'/{}e_{}bs_sample.npz'.format(str(epoch), str(i)), 
-                        mask=pred_batch[-1], 
-                        final_conv=net.finalconv3.weight.detach().cpu().numpy())
-                plt.figure(figsize=(15,10))
-                plt.hist(pred_batch.flatten(), bins = 100)
-                plt.title('{} epoch - {} batch size: mask distribution'.format(str(epoch), str(i)))
-                plt.grid()
-                plt.savefig(str(deb_directory)+'/{}e_{}bs_hist.png'.format(str(epoch), str(i)))
-                plt.close()
+            # if exp_config['general']['last_layer_debug']:
+            #   if np.random.random_sample() > (1-exp_config['general']['p_debug']):
+            #     # print('Saving graph')
+            #     pred_batch = semantic_image_pred.detach().cpu().numpy()
+            #     np.savez(str(deb_directory)+'/{}e_{}bs_sample.npz'.format(str(epoch), str(i)), 
+            #             mask=pred_batch[-1], 
+            #             final_conv=net.finalconv3.weight.detach().cpu().numpy())
+            #     plt.figure(figsize=(15,10))
+            #     plt.hist(pred_batch.flatten(), bins = 100)
+            #     plt.title('{} epoch - {} batch size: mask distribution'.format(str(epoch), str(i)))
+            #     plt.grid()
+            #     plt.savefig(str(deb_directory)+'/{}e_{}bs_hist.png'.format(str(epoch), str(i)))
+            #     plt.close()
 
             loss = criterion(semantic_image_pred, semantic_image.long())
             optimizer.zero_grad()
@@ -227,8 +227,8 @@ if __name__ == '__main__':
         
         epoch_loss = sum_loss/index
         track_loss.append(epoch_loss)
-        if exp_config['general']['plot']:
-             plot_grad_flow(net.named_parameters(), epoch, graph_directory)
+        # if exp_config['general']['plot']:
+        #      plot_grad_flow(net.named_parameters(), epoch, graph_directory)
         print("Training loss: ", epoch_loss)
         if exp_config['model']['gradient_clipping']:
           clips = exp_config['model']['gradient_clipping_values']
