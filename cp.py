@@ -27,9 +27,9 @@ def pretrain_strategy(pretrained, cp_path, arch = 'resnet18'):
     encoder.load_state_dict(byol_filtered)
 
   elif pretrained == 'imagenet':
-    # encoder = models.__dict__[arch](pretrained = True)
-    encoder = models.__dict__[arch]()
-    encoder.load_state_dict(torch.load(cp_path))
+    encoder = models.__dict__[arch](pretrained = True)
+    # encoder = models.__dict__[arch]()
+    # encoder.load_state_dict(torch.load(cp_path))
     n_classes = list(encoder.children())[-1].out_features
 
   elif pretrained == 'amdim':
@@ -44,14 +44,14 @@ def pretrain_strategy(pretrained, cp_path, arch = 'resnet18'):
     encoder.fc = nn.Sequential()
     encoder.load_state_dict(amdim_filtered)
 
-  elif pretrained == None:
+  elif pretrained == 'no':
     encoder = models.__dict__[arch]()
     n_classes = list(encoder.children())[-1].out_features
-    pretrained = 'no_pretraining'
+    pretrained = 'no pretraining'
 
   else:
     raise Exception('Pretrained strategy not supported')
     
-  print('Encoder selected: ' + pretrained)
+  print('Encoder selected: ' + arch + '\nPretrained with the following strategy: ' + pretrained)
 
   return encoder, pretrained, n_classes
